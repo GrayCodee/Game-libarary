@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import GameDetails from "./pages/GameDetails";
 import Admin from "./pages/Admin";
+import GameForm from "./pages/GameForm";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 
@@ -25,6 +26,8 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/game/:id" element={<GameDetails />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/add" element={<GameForm />} />
+              <Route path="/admin/edit/:id" element={<GameForm />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

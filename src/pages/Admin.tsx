@@ -1,10 +1,8 @@
-
 import React, { useState } from "react";
 import { games as gamesData } from "../data/games";
 import { Game } from "../types";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,28 +13,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import GameForm from "../components/GameForm";
 import PlatformIcon from "../components/PlatformIcon";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const Admin = () => {
+  const navigate = useNavigate();
   const [games, setGames] = useState<Game[]>(gamesData);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | undefined>(undefined);
-
-  const handleAddGame = (newGame: Game) => {
-    setGames([...games, newGame]);
-    setIsAddDialogOpen(false);
-    toast.success("Game added successfully!");
-  };
-
-  const handleEditGame = (updatedGame: Game) => {
-    setGames(games.map((game) => (game.id === updatedGame.id ? updatedGame : game)));
-    setIsEditDialogOpen(false);
-    toast.success("Game updated successfully!");
-  };
 
   const handleDeleteGame = () => {
     if (selectedGame) {
@@ -44,11 +29,6 @@ const Admin = () => {
       setIsDeleteDialogOpen(false);
       toast.success("Game deleted successfully!");
     }
-  };
-
-  const openEditDialog = (game: Game) => {
-    setSelectedGame(game);
-    setIsEditDialogOpen(true);
   };
 
   const openDeleteDialog = (game: Game) => {
@@ -62,7 +42,7 @@ const Admin = () => {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-white">Game Management</h1>
           <Button 
-            onClick={() => setIsAddDialogOpen(true)}
+            onClick={() => navigate('/admin/add')}
             className="bg-game-purple hover:bg-game-purple-dark"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -120,7 +100,7 @@ const Admin = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openEditDialog(game)}
+                        onClick={() => navigate(`/admin/edit/${game.id}`)}
                         className="text-gray-300 hover:text-white mr-2"
                       >
                         <Edit className="h-4 w-4" />
@@ -141,34 +121,6 @@ const Admin = () => {
           </div>
         </div>
 
-        {/* Add Game Dialog */}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add New Game</DialogTitle>
-            </DialogHeader>
-            <GameForm
-              onSubmit={handleAddGame}
-              onCancel={() => setIsAddDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Game Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Game</DialogTitle>
-            </DialogHeader>
-            <GameForm
-              game={selectedGame}
-              onSubmit={handleEditGame}
-              onCancel={() => setIsEditDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Confirmation Dialog */}
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>

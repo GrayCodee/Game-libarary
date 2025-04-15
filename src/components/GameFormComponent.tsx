@@ -1,26 +1,13 @@
-
-import React, { useState, useEffect } from "react";
-import { Game, GameCategory, Platform } from "../types";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
+import React, { useState, useEffect } from 'react';
+import { Game, GameCategory, Platform } from '../types';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-
-interface GameFormProps {
-  game?: Game;
-  onSubmit: (game: Game) => void;
-  onCancel: () => void;
-}
 
 const PLATFORMS: { value: Platform; label: string }[] = [
   { value: "playstation", label: "PlayStation" },
@@ -44,7 +31,7 @@ const CATEGORIES: { value: GameCategory; label: string }[] = [
   { value: "horror", label: "Horror" },
 ];
 
-const GameForm: React.FC<GameFormProps> = ({ game, onSubmit, onCancel }) => {
+const GameFormComponent = ({ game, onSubmit, onCancel }: { game?: Game, onSubmit: (game: Game) => void, onCancel: () => void }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [longDescription, setLongDescription] = useState("");
@@ -104,6 +91,23 @@ const GameForm: React.FC<GameFormProps> = ({ game, onSubmit, onCancel }) => {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        if (type === 'image') {
+          setCoverImage(reader.result);
+        } else {
+          setVideoUrl(reader.result);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
@@ -130,36 +134,31 @@ const GameForm: React.FC<GameFormProps> = ({ game, onSubmit, onCancel }) => {
         </div>
 
         <div>
-          <Label htmlFor="longDescription">Long Description</Label>
-          <Textarea
-            id="longDescription"
-            value={longDescription}
-            onChange={(e) => setLongDescription(e.target.value)}
-            className="mt-1"
-            rows={5}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="coverImage">Cover Image URL*</Label>
+          <Label htmlFor="coverImage">Cover Image*</Label>
           <Input
             id="coverImage"
-            value={coverImage}
-            onChange={(e) => setCoverImage(e.target.value)}
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFileUpload(e, 'image')}
             className="mt-1"
-            required
           />
+          {coverImage && (
+            <img src={coverImage} alt="Preview" className="mt-2 max-w-xs rounded" />
+          )}
         </div>
 
         <div>
-          <Label htmlFor="videoUrl">Video URL (YouTube embed)</Label>
+          <Label htmlFor="videoFile">Game Video</Label>
           <Input
-            id="videoUrl"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
+            id="videoFile"
+            type="file"
+            accept="video/*"
+            onChange={(e) => handleFileUpload(e, 'video')}
             className="mt-1"
-            placeholder="https://www.youtube.com/embed/..."
           />
+          {videoUrl && (
+            <video src={videoUrl} className="mt-2 max-w-xs rounded" controls />
+          )}
         </div>
 
         <div>
@@ -250,4 +249,4 @@ const GameForm: React.FC<GameFormProps> = ({ game, onSubmit, onCancel }) => {
   );
 };
 
-export default GameForm;
+export default GameFormComponent;
