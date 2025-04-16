@@ -1,20 +1,43 @@
+import React, { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import axios from "axios";
 
-import React, { useState, useEffect } from 'react';
-import { Game, GameCategory, Platform } from '../types';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
+// Define types needed for the component
+type Platform = "playstation" | "xbox" | "pc" | "mobile";
+type GameCategory = "action" | "adventure" | "rpg" | "puzzle";
+
+// Platform mapping to their numeric IDs
+const PLATFORM_IDS: Record<Platform, number> = {
+  pc: 1,
+  playstation: 2,
+  xbox: 3,
+  mobile: 4,
+};
+
+// Category mapping to their numeric IDs
+const CATEGORY_IDS: Record<GameCategory, number> = {
+  action: 1,
+  adventure: 2,
+  puzzle: 3,
+  rpg: 4,
+};
 
 const PLATFORMS: { value: Platform; label: string }[] = [
   { value: "playstation", label: "PlayStation" },
   { value: "xbox", label: "Xbox" },
   { value: "pc", label: "PC" },
-  { value: "nintendo", label: "Nintendo" },
   { value: "mobile", label: "Mobile" },
 ];
 
@@ -22,92 +45,182 @@ const CATEGORIES: { value: GameCategory; label: string }[] = [
   { value: "action", label: "Action" },
   { value: "adventure", label: "Adventure" },
   { value: "rpg", label: "RPG" },
-  { value: "strategy", label: "Strategy" },
-  { value: "simulation", label: "Simulation" },
-  { value: "sports", label: "Sports" },
   { value: "puzzle", label: "Puzzle" },
-  { value: "racing", label: "Racing" },
-  { value: "fighting", label: "Fighting" },
-  { value: "shooter", label: "Shooter" },
-  { value: "horror", label: "Horror" },
 ];
 
-const GameFormComponent = ({ game, onSubmit, onCancel }: { game?: Game, onSubmit: (game: Game) => void, onCancel: () => void }) => {
+// Cloudinary configuration constants
+const CLOUDINARY_CLOUD_NAME = "dsctpgxda"; // Replace this with your cloud name
+const CLOUDINARY_UPLOAD_PRESET = "abdola2"; // Replace with your unsigned upload preset
+
+const GameFormComponent = ({ onCancel }: { onCancel: () => void }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [longDescription, setLongDescription] = useState("");
   const [coverImage, setCoverImage] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [localImagePreview, setLocalImagePreview] = useState("");
+  const [localVideoPreview, setLocalVideoPreview] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
   const [category, setCategory] = useState<GameCategory>("action");
-  const [releaseDate, setReleaseDate] = useState("");
-  const [developer, setDeveloper] = useState("");
-  const [publisher, setPublisher] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ image: 0, video: 0 });
 
-  useEffect(() => {
-    if (game) {
-      setTitle(game.title);
-      setDescription(game.description);
-      setLongDescription(game.longDescription || "");
-      setCoverImage(game.coverImage);
-      setVideoUrl(game.videoUrl || "");
-      setSelectedPlatforms(game.platforms);
-      setCategory(game.category);
-      setReleaseDate(game.releaseDate || "");
-      setDeveloper(game.developer || "");
-      setPublisher(game.publisher || "");
-    }
-  }, [game]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!title || !description || !coverImage || !category || selectedPlatforms.length === 0) {
+    setIsSubmitting(true);
+
+    if (
+      !title ||
+      !description ||
+      !coverImage ||
+      !category ||
+      selectedPlatforms.length === 0
+    ) {
       toast.error("Please fill in all required fields");
+      setIsSubmitting(false);
       return;
     }
 
-    const updatedGame: Game = {
-      id: game ? game.id : uuidv4(),
-      title,
+    // Map platform strings to their respective numeric IDs
+    const platformIds = selectedPlatforms.map(
+      (platform) => PLATFORM_IDS[platform]
+    );
+
+    const newGame = {
+      name: title,
       description,
-      longDescription: longDescription || undefined,
-      coverImage,
-      videoUrl: videoUrl || undefined,
-      platforms: selectedPlatforms,
-      category,
-      releaseDate: releaseDate || undefined,
-      developer: developer || undefined,
-      publisher: publisher || undefined,
+      imageUrl: coverImage,
+      videoUrl: videoUrl || "",
+      categoryid: CATEGORY_IDS[category], // Using numeric categoryid
+      gameDeviceIds: platformIds, // Using numeric IDs for platforms
     };
 
-    onSubmit(updatedGame);
-  };
-
-  const togglePlatform = (platform: Platform) => {
-    if (selectedPlatforms.includes(platform)) {
-      setSelectedPlatforms(selectedPlatforms.filter((p) => p !== platform));
-    } else {
-      setSelectedPlatforms([...selectedPlatforms, platform]);
+    try {
+      const response = await axios.post(
+        "https://localhost:44385/api/games/CreateGame",
+        newGame
+      );
+      toast.success("Game added successfully!");
+      resetForm();
+    } catch (error) {
+      toast.error("Failed to add the game. Please try again.");
+      console.error("API Error:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setCoverImage("");
+    setVideoUrl("");
+    setLocalImagePreview("");
+    setLocalVideoPreview("");
+    setSelectedPlatforms([]);
+    setCategory("action");
+    setUploadProgress({ image: 0, video: 0 });
+  };
+
+  const togglePlatform = (platform: Platform) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(platform)
+        ? prev.filter((p) => p !== platform)
+        : [...prev, platform]
+    );
+  };
+
+  // Create local preview immediately
+  const createLocalPreview = (file: File, type: "image" | "video") => {
+    const localUrl = URL.createObjectURL(file);
+    if (type === "image") {
+      setLocalImagePreview(localUrl);
+    } else {
+      setLocalVideoPreview(localUrl);
+    }
+    return localUrl;
+  };
+
+  // Upload file to Cloudinary
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "image" | "video"
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        if (type === 'image') {
-          setCoverImage(reader.result);
-        } else {
-          setVideoUrl(reader.result);
+    // Create and show local preview immediately
+    createLocalPreview(file, type);
+
+    // Start upload process
+    setIsUploading(true);
+    setUploadProgress((prev) => ({ ...prev, [type]: 0 }));
+    toast.info(`Uploading ${type}...`);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+    // Set resource_type based on file type
+    const resourceType = type === "image" ? "image" : "video";
+
+    try {
+      // Use XHR to track upload progress
+      const xhr = new XMLHttpRequest();
+      xhr.open(
+        "POST",
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`
+      );
+
+      // Track progress
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round(
+            (event.loaded / event.total) * 100
+          );
+          setUploadProgress((prev) => ({ ...prev, [type]: percentComplete }));
         }
-      }
-    };
-    reader.readAsDataURL(file);
+      };
+
+      // Handle completion
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const data = JSON.parse(xhr.responseText);
+          if (type === "image") {
+            setCoverImage(data.secure_url);
+          } else {
+            setVideoUrl(data.secure_url);
+          }
+          toast.success(`${type} uploaded successfully!`);
+        } else {
+          throw new Error(`Upload failed with status: ${xhr.status}`);
+        }
+        setIsUploading(false);
+        setUploadProgress((prev) => ({ ...prev, [type]: 100 }));
+      };
+
+      // Handle errors
+      xhr.onerror = () => {
+        toast.error(`Failed to upload ${type}.`);
+        console.error("XHR Upload error");
+        setIsUploading(false);
+      };
+
+      xhr.send(formData);
+    } catch (error) {
+      toast.error(`Failed to upload ${type}.`);
+      console.error("Upload error:", error);
+      setIsUploading(false);
+    }
   };
+
+  // Cleanup function for local previews
+  React.useEffect(() => {
+    return () => {
+      if (localImagePreview) URL.revokeObjectURL(localImagePreview);
+      if (localVideoPreview) URL.revokeObjectURL(localVideoPreview);
+    };
+  }, [localImagePreview, localVideoPreview]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -128,25 +241,13 @@ const GameFormComponent = ({ game, onSubmit, onCancel }: { game?: Game, onSubmit
 
           {/* Description Input */}
           <div>
-            <Label htmlFor="description">Short Description*</Label>
+            <Label htmlFor="description">Description*</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="mt-1"
               required
-            />
-          </div>
-
-          {/* Long Description Input */}
-          <div>
-            <Label htmlFor="longDescription">Long Description</Label>
-            <Textarea
-              id="longDescription"
-              value={longDescription}
-              onChange={(e) => setLongDescription(e.target.value)}
-              className="mt-1"
-              rows={5}
             />
           </div>
 
@@ -157,9 +258,27 @@ const GameFormComponent = ({ game, onSubmit, onCancel }: { game?: Game, onSubmit
               id="coverImage"
               type="file"
               accept="image/*"
-              onChange={(e) => handleFileUpload(e, 'image')}
+              onChange={(e) => handleFileUpload(e, "image")}
               className="mt-1"
+              disabled={isUploading}
+              aria-describedby="coverImageHelp"
             />
+            <p id="coverImageHelp" className="text-sm text-gray-500 mt-1">
+              Supported formats: JPG, PNG, WebP
+            </p>
+            {uploadProgress.image > 0 && uploadProgress.image < 100 && (
+              <div className="mt-2">
+                <div className="bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full"
+                    style={{ width: `${uploadProgress.image}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {uploadProgress.image}% uploaded
+                </p>
+              </div>
+            )}
           </div>
 
           <div>
@@ -168,9 +287,27 @@ const GameFormComponent = ({ game, onSubmit, onCancel }: { game?: Game, onSubmit
               id="videoFile"
               type="file"
               accept="video/*"
-              onChange={(e) => handleFileUpload(e, 'video')}
+              onChange={(e) => handleFileUpload(e, "video")}
               className="mt-1"
+              disabled={isUploading}
+              aria-describedby="videoFileHelp"
             />
+            <p id="videoFileHelp" className="text-sm text-gray-500 mt-1">
+              Supported formats: MP4, WebM (Max 100MB)
+            </p>
+            {uploadProgress.video > 0 && uploadProgress.video < 100 && (
+              <div className="mt-2">
+                <div className="bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full"
+                    style={{ width: `${uploadProgress.video}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {uploadProgress.video}% uploaded
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Platforms Selection */}
@@ -178,7 +315,10 @@ const GameFormComponent = ({ game, onSubmit, onCancel }: { game?: Game, onSubmit
             <Label>Platforms*</Label>
             <div className="mt-2 flex flex-wrap gap-4">
               {PLATFORMS.map((platform) => (
-                <div key={platform.value} className="flex items-center space-x-2">
+                <div
+                  key={platform.value}
+                  className="flex items-center space-x-2"
+                >
                   <Checkbox
                     id={`platform-${platform.value}`}
                     checked={selectedPlatforms.includes(platform.value)}
@@ -214,52 +354,18 @@ const GameFormComponent = ({ game, onSubmit, onCancel }: { game?: Game, onSubmit
               </SelectContent>
             </Select>
           </div>
-
-          {/* Release Date Input */}
-          <div>
-            <Label htmlFor="releaseDate">Release Date</Label>
-            <Input
-              id="releaseDate"
-              type="date"
-              value={releaseDate}
-              onChange={(e) => setReleaseDate(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-
-          {/* Developer Input */}
-          <div>
-            <Label htmlFor="developer">Developer</Label>
-            <Input
-              id="developer"
-              value={developer}
-              onChange={(e) => setDeveloper(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-
-          {/* Publisher Input */}
-          <div>
-            <Label htmlFor="publisher">Publisher</Label>
-            <Input
-              id="publisher"
-              value={publisher}
-              onChange={(e) => setPublisher(e.target.value)}
-              className="mt-1"
-            />
-          </div>
         </div>
 
         <div className="flex justify-end space-x-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-          >
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" className="bg-game-purple hover:bg-game-purple-dark">
-            {game ? "Update Game" : "Add Game"}
+          <Button
+            type="submit"
+            className="bg-game-purple hover:bg-game-purple-dark"
+            disabled={isSubmitting || isUploading}
+          >
+            {isSubmitting ? "Adding..." : "Add Game"}
           </Button>
         </div>
       </form>
@@ -268,29 +374,43 @@ const GameFormComponent = ({ game, onSubmit, onCancel }: { game?: Game, onSubmit
       <div className="space-y-6 sticky top-6">
         <div className="rounded-lg overflow-hidden bg-game-card p-6 space-y-6">
           <h2 className="text-xl font-bold text-white mb-4">Preview</h2>
-          
-          {coverImage ? (
+
+          {/* Image Preview - Show local preview first, fallback to uploaded image */}
+          {localImagePreview || coverImage ? (
             <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Cover Image</h3>
+              <h3 className="text-sm font-medium text-gray-400 mb-2">
+                Cover Image{" "}
+                {uploadProgress.image > 0 &&
+                  uploadProgress.image < 100 &&
+                  `(Uploading: ${uploadProgress.image}%)`}
+              </h3>
               <img
-                src={coverImage}
+                src={localImagePreview || coverImage}
                 alt="Game cover preview"
-                className="w-full h-auto rounded-lg shadow-lg"
+                className="w-full h-auto rounded-lg"
               />
             </div>
           ) : (
             <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
-              <p className="text-gray-400">Upload a cover image to see preview</p>
+              <p className="text-gray-400">
+                Upload a cover image to see preview
+              </p>
             </div>
           )}
 
-          {videoUrl && (
+          {/* Video Preview - Show local preview first, fallback to uploaded video */}
+          {(localVideoPreview || videoUrl) && (
             <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Video Preview</h3>
+              <h3 className="text-sm font-medium text-gray-400 mb-2">
+                Video Preview{" "}
+                {uploadProgress.video > 0 &&
+                  uploadProgress.video < 100 &&
+                  `(Uploading: ${uploadProgress.video}%)`}
+              </h3>
               <video
-                src={videoUrl}
+                src={localVideoPreview || videoUrl}
                 controls
-                className="w-full rounded-lg shadow-lg"
+                className="w-full rounded-lg"
               />
             </div>
           )}

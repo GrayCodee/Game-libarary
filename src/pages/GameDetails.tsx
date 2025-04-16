@@ -1,18 +1,47 @@
-
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { games } from "../data/games";
 import VideoPlayer from "../components/VideoPlayer";
 import PlatformIcon from "../components/PlatformIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import axios from "axios";
 
 const GameDetails = () => {
-  const { id } = useParams<{ id: string }>();
-  const game = games.find((g) => g.id === id);
+  const { id } = useParams();
+  const [game, setGame] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!game) {
+  useEffect(() => {
+    const fetchGameDetails = async () => {
+      try {
+        const response = await axios.get(
+          `https://localhost:44385/api/games/GetGameById/${id}`
+        );
+        setGame(response.data);
+      } catch (err) {
+        // Handle any possible error from the backend or connection
+        setError(err.response?.data?.message || "Game not found");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGameDetails();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-game-dark flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Loading...</h1>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !game) {
     return (
       <div className="min-h-screen bg-game-dark flex items-center justify-center">
         <div className="text-center">
@@ -40,42 +69,59 @@ const GameDetails = () => {
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-game-card rounded-lg overflow-hidden shadow-lg">
               <img
-                src={game.coverImage}
-                alt={`${game.title} cover`}
+                src={game.imageUrl}
+                alt={`${game.name} cover`}
                 className="w-full h-64 object-cover"
               />
             </div>
 
             {game.videoUrl && (
               <div>
-                <h2 className="text-xl font-bold text-white mb-3">Game Trailer</h2>
+                <h2 className="text-xl font-bold text-white mb-3">
+                  Game Trailer
+                </h2>
                 <VideoPlayer videoUrl={game.videoUrl} />
               </div>
             )}
 
             <div className="bg-game-card rounded-lg p-6">
-              <h2 className="text-xl font-bold text-white mb-3">About the Game</h2>
-              <p className="text-gray-300 whitespace-pre-line">{game.longDescription || game.description}</p>
+              <h2 className="text-xl font-bold text-white mb-3">
+                About the Game
+              </h2>
+              <p className="text-gray-300 whitespace-pre-line">
+                {game.description}
+              </p>
             </div>
           </div>
 
           <div className="space-y-6">
             <div className="bg-game-card rounded-lg p-6">
-              <h1 className="text-3xl font-bold text-white mb-2">{game.title}</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                {game.name}
+              </h1>
               <div className="flex flex-wrap gap-2 mb-4">
-                <Badge variant="outline" className="text-game-purple border-game-purple">
-                  {game.category.charAt(0).toUpperCase() + game.category.slice(1)}
+                <Badge
+                  variant="outline"
+                  className="text-game-purple border-game-purple"
+                >
+                  {game.categoryName.charAt(0).toUpperCase() +
+                    game.categoryName.slice(1)}
                 </Badge>
               </div>
               <div className="mb-6">
-                <h2 className="text-lg font-medium text-white mb-2">Platforms</h2>
+                <h2 className="text-lg font-medium text-white mb-2">
+                  Platforms
+                </h2>
                 <div className="flex flex-wrap gap-3">
-                  {game.platforms.map((platform) => (
+                  {game.gameDevice.map((platform) => (
                     <div
                       key={platform}
                       className="flex items-center bg-game-dark-light px-3 py-1 rounded-md"
                     >
-                      <PlatformIcon platform={platform} className="text-game-purple mr-2" />
+                      <PlatformIcon
+                        platform={platform}
+                        className="text-game-purple mr-2"
+                      />
                       <span className="text-sm text-gray-300">
                         {platform.charAt(0).toUpperCase() + platform.slice(1)}
                       </span>

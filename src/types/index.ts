@@ -1,14 +1,13 @@
+export type Platform = "PlayStation" | "Xbox" | "PC" | "Mobile";
 
-export type Platform = "playstation" | "xbox" | "pc" | "nintendo" | "mobile";
-
-export type GameCategory = 
-  | "action" 
-  | "adventure" 
-  | "rpg" 
-  | "strategy" 
-  | "simulation" 
-  | "sports" 
-  | "puzzle" 
+export type GameCategory =
+  | "action"
+  | "adventure"
+  | "rpg"
+  | "strategy"
+  | "simulation"
+  | "sports"
+  | "puzzle"
   | "racing"
   | "fighting"
   | "shooter"
